@@ -79,6 +79,48 @@ class TSVDocPreprocessor(DocPreprocessor):
                 )
                 yield doc, doc_text
 
+import pdb
+class GDDDocPreprocessor(DocPreprocessor):
+    """Simple parsing of GDD-style TSV file
+
+    columns:
+        (docid, sentid, wordidx, words, poses, ners, lemmas, dep_paths, dep_parents)
+
+
+    """
+    def parse_file(self, fp, file_name):
+        # TODO: hmm. Maybe I should toss the TSV into a DB and scroll through that
+        # document-by-document? That way I don't have to parse garbage like {",", "\", "Annoying", "string"}
+
+
+        with codecs.open(fp, encoding=self.encoding) as tsv:
+            # read in, lumping sentences into an object until the doc_id changes, then yield
+            _doc = True
+            docid = None
+            prev_docid = None
+            sentences = []
+            # TODO:  un-shittify this logic
+            for line in tsv:
+                (docid, sentid, wordidx, words, poses, ners, lemmas, dep_paths, dep_parents) = line.split('\t')
+                if docid != prev_docid and prev_docid is not None:
+                    stable_id = self.get_stable_id(prev_docid)
+                    doc = Document(
+                        name=prev_docid, stable_id=stable_id,
+                        meta={'file_name': file_name}
+                    )
+                    print prev_docid, len(sentences)
+                    yield doc, sentences
+                    prev_docid = docid
+                    sentences = []
+                prev_docid = docid
+                sentences.append((docid, sentid, wordidx, words, poses, ners, lemmas, dep_paths, dep_parents))
+            stable_id = self.get_stable_id(docid)
+            doc = Document(
+                name=prev_docid, stable_id=stable_id,
+                meta={'file_name': file_name}
+            )
+            yield doc, sentences
+
 
 class TextDocPreprocessor(DocPreprocessor):
     """Simple parsing of raw text files, assuming one document per file"""
@@ -140,10 +182,10 @@ class CSVPathsPreprocessor(DocPreprocessor):
 
 class TikaPreprocessor(DocPreprocessor):
     """
-    This preprocessor use `Apache Tika <http://tika.apache.org>`_ parser to 
+    This preprocessor use `Apache Tika <http://tika.apache.org>`_ parser to
     retrieve text content from complex file types such as DOCX, HTML and PDFs.
 
-    Documentation for customizing Tika is 
+    Documentation for customizing Tika is
     `here <https://github.com/chrismattmann/tika-python>`_
 
     Example::
@@ -160,7 +202,7 @@ class TikaPreprocessor(DocPreprocessor):
     import tika
     # automatically downloads tika jar and starts a JVM processif no REST API
     # is configured in ENV
-    tika.initVM()  
+    tika.initVM()
     from tika import parser as tk_parser
     parser = tk_parser
 
