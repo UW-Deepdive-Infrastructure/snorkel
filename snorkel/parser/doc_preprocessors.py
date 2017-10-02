@@ -108,7 +108,6 @@ class GDDDocPreprocessor(DocPreprocessor):
                         name=prev_docid, stable_id=stable_id,
                         meta={'file_name': file_name}
                     )
-                    print prev_docid, len(sentences)
                     yield doc, sentences
                     prev_docid = docid
                     sentences = []
